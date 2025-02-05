@@ -1,178 +1,176 @@
 import jax
 import jax.numpy as jnp
 import haiku as hk
-import optax
 import pickle
 import re
 import os
-import json
+import logging
+import requests
+import speech_recognition as sr
+import pyttsx3
 import sentencepiece as spm
-from typing import List, Tuple, Dict, Any
 from flask import Flask, request, jsonify
 from waitress import serve
 from flask_talisman import Talisman
-from jax.experimental import optimizers
 
-# Security & Logging
-import logging
-from cryptography.fernet import Fernet
+# Logging setup
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
-
-# -------------------------------
-# 🔒 SECURITY: Encryption Key (Generated & Stored Securely)
-# -------------------------------
-ENCRYPTION_KEY = b"YOUR_256_BIT_KEY_HERE"  # Replace with a securely generated key
-cipher = Fernet(ENCRYPTION_KEY)
-
-# -------------------------------
-# ⚙️ MODEL CONFIGURATION
-# -------------------------------
-config = {
-    "vocab_size": 32000,  # Match SentencePiece model
-    "d_model": 16384,
-    "num_layers": 128,
-    "num_heads": 64,
-    "max_length": 8192,
-    "learning_rate": 1e-4,  # Learning rate for fine-tuning
-}
-
-# -------------------------------
-# 🔥 TRANSFORMER MODEL
-# -------------------------------
+# Model Definitions
 class SuperGrok(hk.Module):
-    def __init__(self, config: Dict[str, int]):
+    def __init__(self, config):
         super().__init__()
         self.config = config
-        self.embed = hk.Embed(vocab_size=config["vocab_size"], embed_dim=config["d_model"])
+        self.embed = hk.Embed(vocab_size=config['vocab_size'], embed_dim=config['d_model'])
         self.transformer = hk.nets.TransformerDecoder(
-            num_heads=config["num_heads"],
-            num_layers=config["num_layers"],
-            key_size=config["d_model"] // config["num_heads"],
-            w_init=hk.initializers.VarianceScaling(1.0, "fan_avg", "uniform"),
+            num_heads=config['num_heads'],
+            num_layers=config['num_layers'],
+            key_size=config['d_model'] // config['num_heads'],
+            w_init=hk.initializers.VarianceScaling(1.0, 'fan_avg', 'uniform')
         )
-        self.output_layer = hk.Linear(config["vocab_size"])
+        self.output_layer = hk.Linear(config['vocab_size'])
 
-    def __call__(self, x: jnp.ndarray) -> jnp.ndarray:
+    def __call__(self, x):
         x = self.embed(x)
         x = self.transformer(x, x)
         return self.output_layer(x)
 
-def model_fn(x: jnp.ndarray) -> jnp.ndarray:
+# Configuration
+config = {
+    'vocab_size': 32000,
+    'd_model': 16384,
+    'num_layers': 128,
+    'num_heads': 64,
+    'max_length': 8192,
+}
+
+# Model Functions
+def model_fn(x):
     module = SuperGrok(config)
     return module(x)
 
-init_fn, apply_fn = hk.without_apply_rng(hk.transform(model_fn))
+def init_model(rng):
+    dummy_input = jnp.ones((1, config['max_length']), dtype=jnp.int32)
+    init_fn = hk.without_apply_rng(hk.transform(model_fn))
+    params = init_fn.init(rng, dummy_input)
+    return params
 
-# -------------------------------
-# 🔄 MODEL LOADING & SAVING
-# -------------------------------
-def save_model(params: hk.Params) -> None:
-    encrypted_params = cipher.encrypt(pickle.dumps(params))
-    with open("model_checkpoint.enc", "wb") as f:
-        f.write(encrypted_params)
+def apply_model(params, input_ids):
+    apply_fn = hk.without_apply_rng(hk.transform(model_fn)).apply
+    return apply_fn(params, input_ids)
 
-def load_model() -> hk.Params:
-    if os.path.exists("model_checkpoint.enc"):
-        with open("model_checkpoint.enc", "rb") as f:
-            decrypted_data = cipher.decrypt(f.read())
-            return pickle.loads(decrypted_data)
-    logging.warning("No model checkpoint found, initializing new model.")
-    return init_fn.init(jax.random.PRNGKey(42), jnp.ones((1, config["max_length"]), dtype=jnp.int32))
+# Load Model
+def load_model():
+    try:
+        with open('model_checkpoint.pkl', 'rb') as f:
+            return pickle.load(f)
+    except FileNotFoundError:
+        logging.warning("No model checkpoint found, initializing new model.")
+        return init_model(jax.random.PRNGKey(42))
 
 params = load_model()
 
-# -------------------------------
-# 📖 TOKENIZATION
-# -------------------------------
+# Tokenization
 sp = spm.SentencePieceProcessor()
-sp.Load("supergrok.model")
+sp.Load('supergrok.model')
 
-def sanitize_input(text: str) -> str:
-    return re.sub(r"<[^>]*>", "", text)[:1000]  # Remove HTML tags, limit length
+# Context Retention (Local Memory Cache)
+conversation_history = []
 
-def tokenize(text: str) -> List[int]:
+def sanitize_input(text):
+    return re.sub(r'<[^>]*>', '', text)[:1000]
+
+def tokenize(text):
     return sp.encode_as_ids(text)
 
-def prepare_for_model(text: str) -> jnp.ndarray:
+def prepare_for_model(text, max_length=config['max_length']):
     tokenized = tokenize(text)
-    if len(tokenized) < config["max_length"]:
-        tokenized += [0] * (config["max_length"] - len(tokenized))
+    if len(tokenized) < max_length:
+        tokenized += [0] * (max_length - len(tokenized))
     else:
-        tokenized = tokenized[:config["max_length"]]
+        tokenized = tokenized[:max_length]
     return jnp.array(tokenized)
 
-# -------------------------------
-# 🔥 REAL-TIME LEARNING (Fine-Tuning)
-# -------------------------------
-optimizer = optax.adam(config["learning_rate"])
-opt_state = optimizer.init(params)
-
-def fine_tune(params: hk.Params, opt_state: Any, input_ids: jnp.ndarray) -> Tuple[hk.Params, Any]:
-    def loss_fn(p):
-        predictions = apply_fn(p, input_ids[None, :])  # Add batch dim
-        target = input_ids[1:] + [0]  # Shifted target
-        return jnp.mean((predictions - jnp.array(target)) ** 2)
-
-    grads = jax.grad(loss_fn)(params)
-    updates, opt_state = optimizer.update(grads, opt_state)
-    params = optax.apply_updates(params, updates)
-
-    return params, opt_state
-
-# -------------------------------
-# 🤖 FLASK API SERVER
-# -------------------------------
+# Flask API Server
 app = Flask(__name__)
-Talisman(app, content_security_policy={"default-src": "'self'"})
+talisman = Talisman(app, content_security_policy={'default-src': "'self'"})
 
-# 🔵 Context Memory Cache (Local)
-context_memory = []
-
-@app.route("/predict", methods=["POST"])
+@app.route('/predict', methods=['POST'])
 def predict():
+    global conversation_history
     try:
-        input_data = request.json.get("input", "")
+        input_data = request.json.get('input', '')
         sanitized_input = sanitize_input(input_data)
+        conversation_history.append(sanitized_input)
         
-        # 📌 Cache recent inputs
-        context_memory.append(sanitized_input)
-        if len(context_memory) > 10:  # Limit cache size
-            context_memory.pop(0)
+        if len(conversation_history) > 10:
+            conversation_history.pop(0)  # Keep memory manageable
 
-        input_ids = prepare_for_model(sanitized_input)
-        
-        # 🏎️ XLA Compilation for Speed
-        fast_apply = jax.jit(apply_fn)
-        predictions = fast_apply(params, input_ids[None, :])  
+        input_ids = prepare_for_model(" ".join(conversation_history))
+        predictions = apply_model(params, input_ids[None, :])
+        decoded_prediction = sp.decode([jnp.argmax(predictions[0])])
 
-        # 🌟 Top-K Sampling for better responses
-        top_k = 5
-        sorted_indices = jnp.argsort(predictions[0])[-top_k:]
-        decoded_prediction = sp.decode([int(sorted_indices[jnp.argmax(jnp.take(predictions[0], sorted_indices))])])
-
-        # 🏋️ Real-time fine-tuning
-        global params, opt_state
-        params, opt_state = fine_tune(params, opt_state, input_ids)
-        save_model(params)
-
-        return jsonify({"prediction": decoded_prediction}), 200
+        conversation_history.append(decoded_prediction)
+        return jsonify({'prediction': decoded_prediction}), 200
     except Exception as e:
         logging.error(f"Error in prediction: {e}")
         return jsonify({"error": str(e)}), 500
 
-@app.route("/update_model", methods=["POST"])
-def update_model():
-    try:
-        new_params = load_model()
-        save_model(new_params)
-        return jsonify({"status": "Model updated successfully"}), 200
-    except Exception as e:
-        logging.error(f"Error updating model: {e}")
-        return jsonify({"error": "Model update failed"}), 500
+# File Upload Handling
+@app.route('/upload', methods=['POST'])
+def upload_file():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file uploaded'}), 400
+    
+    file = request.files['file']
+    file_path = os.path.join('uploads', file.filename)
+    os.makedirs('uploads', exist_ok=True)
+    file.save(file_path)
+    
+    return jsonify({'status': f'File {file.filename} uploaded successfully', 'file_path': file_path}), 200
 
-# -------------------------------
-# 🚀 RUN SERVER
-# -------------------------------
-if __name__ == "__main__":
-    serve(app, host="0.0.0.0", port=8080)
+# Voice Input/Output
+engine = pyttsx3.init()
+recognizer = sr.Recognizer()
+
+def speak(text):
+    engine.say(text)
+    engine.runAndWait()
+
+def listen():
+    with sr.Microphone() as source:
+        print("Listening...")
+        audio = recognizer.listen(source)
+    try:
+        return recognizer.recognize_google(audio)
+    except sr.UnknownValueError:
+        return "Sorry, I couldn't understand that."
+    except sr.RequestError:
+        return "Error with speech recognition service."
+
+# Start API and Interactive Chat
+if __name__ == '__main__':
+    serve(app, host="0.0.0.0", port=8080, threads=4)
+    
+    print("
+Super GROK is running! You can now chat directly from the terminal.")
+    print("Type your message and press Enter. Type 'exit' or 'quit' to stop.
+")
+
+    while True:
+        user_input = input("Ask Super GROK (or say 'voice' for speech mode): ").strip()
+        if user_input.lower() in ["exit", "quit"]:
+            print("Goodbye!")
+            break
+        elif user_input.lower() == "voice":
+            user_input = listen()
+            print(f"You said: {user_input}")
+        
+        response = requests.post("http://localhost:8080/predict", json={"input": user_input})
+        
+        if response.status_code == 200:
+            prediction = response.json().get("prediction")
+            print("Super GROK:", prediction)
+            speak(prediction)  # AI will also respond with voice
+        else:
+            print("Error:", response.json().get("error"))
