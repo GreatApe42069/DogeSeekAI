@@ -25,7 +25,7 @@ pip install jax jaxlib haiku optax transformers flask waitress flask-talisman se
 Clone or download this repository:
 
 ```bash
-git clone https://github.com/yourusername/SuperGrok.git
+git clone https://github.com/GreatApe42069/SuperGrok.git
 cd SuperGrok
 ```
 
