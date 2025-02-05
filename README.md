@@ -52,3 +52,16 @@ curl -X POST http://localhost:8080/update_model
 🔒 **Super GROK runs 100% locally** – your data stays on your computer!  
 🔑 **Encrypted Storage** – The model is stored securely using encryption  
 🛡️ **Prevents AI Attacks** – Ensures safe updates & prevents hacking attempts  
+
+# 🤝 Contributions 
+If you'd like to contribute or support my future projects, please donate in Dogecoin.
+
+Send all Dogecoin to the following Contributor:
+
+***You can donate to me GreatApe here:***
+
+"handle": ***"GreatApe"*** "at": [***"@Greatape42069E"***](https://x.com/Greatape42069E)
+
+ **"Đogecoin_address": "D9pqzxiiUke5eodEzMmxZAxpFcbvwuM4Hg"**
+
+![image](https://github.com/user-attachments/assets/92ad2d4c-b3b1-4464-b9c0-708038634770)
