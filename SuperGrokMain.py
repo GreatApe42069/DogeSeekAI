@@ -1,108 +1,125 @@
-import jax
-import jax.numpy as jnp
-import haiku as hk
-import optax
-import flask
-from flask import Flask, request, jsonify
-from flask_talisman import Talisman
-import sentencepiece as spm
 import json
-import logging
-import os
-import speech_recognition as sr
+import torch
+import haiku as hk
+import jax.numpy as jnp
+import jax
+import librosa
+import numpy as np
 import pyttsx3
-from cryptography.fernet import Fernet
+import base64
+import os
+import flask
+import transformers
+from flask import Flask, request, jsonify
+from transformers import GPT2LMHeadModel, GPT2Tokenizer, pipeline
+from PIL import Image
+import torchvision.transforms as transforms
+import torchvision.models as models
 
-# Logging setup
-logging.basicConfig(level=logging.INFO)
+# Load configuration
+with open("config.json", "r") as config_file:
+    config = json.load(config_file)
 
-# Load configuration from file
-CONFIG_FILE = "config.json"
-if os.path.exists(CONFIG_FILE):
-    with open(CONFIG_FILE, "r") as f:
-        config = json.load(f)
-else:
-    config = {
-        "d_model": 16384,
-        "num_layers": 128,
-        "max_length": 1024,
-        "context_window": 10,
-        "encryption_key": Fernet.generate_key().decode()
-    }
+# Flask app
+app = Flask(__name__)
 
-# Encryption setup
-fernet = Fernet(config["encryption_key"].encode())
+# Load GPT-2 model and tokenizer
+tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
+gpt2_model = GPT2LMHeadModel.from_pretrained("gpt2")
 
-# AI Model
-class SuperGrok(hk.Module):
+# Load ResNet model for image processing
+resnet_model = models.resnet50(pretrained=True)
+resnet_model.eval()
+
+# Load sentiment analysis and named entity recognition
+sentiment_pipeline = pipeline("sentiment-analysis")
+ner_pipeline = pipeline("ner")
+
+# Initialize text-to-speech engine
+tts_engine = pyttsx3.init()
+
+# Transformer model definition
+class TransformerModel(hk.Module):
+    def __init__(self, model_size=512, num_heads=8, num_layers=6, name=None):
+        super().__init__(name=name)
+        self.model_size = model_size
+        self.num_heads = num_heads
+        self.num_layers = num_layers
+
     def __call__(self, x):
-        return hk.Linear(config["d_model"])(x)
+        return hk.Linear(self.model_size)(x)
 
 def model_fn(x):
-    net = SuperGrok()
-    return net(x)
+    model = TransformerModel()
+    return model(x)
 
-# Initialize model
+# JAX transformation
 model = hk.transform(model_fn)
-params = model.init(jax.random.PRNGKey(42), jnp.ones([1, config["d_model"]]))
 
-# Flask App Setup
-app = Flask(__name__)
-Talisman(app)
+# Image preprocessing function
+def process_image(image_path):
+    image = Image.open(image_path).convert("RGB")
+    transform = transforms.Compose([
+        transforms.Resize((224, 224)),
+        transforms.ToTensor()
+    ])
+    image_tensor = transform(image).unsqueeze(0)
+    features = resnet_model(image_tensor)
+    return features.detach().numpy().tolist()
+
+# Speech emotion analysis (placeholder)
+def analyze_emotion(audio_path):
+    y, sr = librosa.load(audio_path)
+    return "Neutral"  # Placeholder, replace with trained model
 
 # Context retention
 conversation_history = []
 
-# Voice Engine
-engine = pyttsx3.init()
-recognizer = sr.Recognizer()
-
-def sanitize_input(user_input):
-    return user_input.replace("<", "").replace(">", "")
-
 @app.route("/predict", methods=["POST"])
 def predict():
     global conversation_history
-    data = request.get_json()
-    user_input = sanitize_input(data.get("input", ""))
+    data = request.json
+    user_input = data.get("input", "")
 
-    if not user_input:
-        return jsonify({"error": "No input provided"}), 400
+    inputs = tokenizer.encode(user_input, return_tensors="pt")
+    outputs = gpt2_model.generate(inputs, max_length=150, pad_token_id=tokenizer.eos_token_id)
+    response = tokenizer.decode(outputs[0], skip_special_tokens=True)
 
-    # Update conversation history
     conversation_history.append(user_input)
     if len(conversation_history) > config["context_window"]:
         conversation_history.pop(0)
 
-    response_text = f"Super GROK response to: {user_input}"
+    return jsonify({"response": response})
 
-    # Encrypt and save conversation
-    encrypted_data = fernet.encrypt(response_text.encode())
-    with open("model_checkpoint.enc", "wb") as f:
-        f.write(encrypted_data)
+@app.route("/voice", methods=["POST"])
+def voice():
+    file = request.files["file"]
+    file_path = "temp_audio.wav"
+    file.save(file_path)
 
-    return jsonify({"response": response_text})
+    emotion = analyze_emotion(file_path)
+    os.remove(file_path)
+    
+    return jsonify({"emotion": emotion})
 
-@app.route("/voice", methods=["GET"])
-def voice_input():
-    with sr.Microphone() as source:
-        print("Listening...")
-        try:
-            audio = recognizer.listen(source)
-            text = recognizer.recognize_google(audio)
-            return jsonify({"voice_input": text})
-        except sr.UnknownValueError:
-            return jsonify({"error": "Could not understand audio"}), 400
+@app.route("/image", methods=["POST"])
+def image():
+    file = request.files["file"]
+    file_path = "temp_image.jpg"
+    file.save(file_path)
+
+    features = process_image(file_path)
+    os.remove(file_path)
+
+    return jsonify({"features": features})
 
 @app.route("/update_model", methods=["POST"])
 def update_model():
-    global params
-    if os.path.exists("model_checkpoint.enc"):
-        with open("model_checkpoint.enc", "rb") as f:
-            encrypted_data = f.read()
-            decrypted_data = fernet.decrypt(encrypted_data).decode()
-            logging.info("Model Updated: %s", decrypted_data)
-    return jsonify({"message": "Model updated successfully!"})
+    data = request.json.get("model_data", "")
+    model_bytes = base64.b64decode(data)
+    with open("model_checkpoint.enc", "wb") as f:
+        f.write(model_bytes)
+    return jsonify({"status": "Model updated securely."})
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8080)
+    app.run(port=config["port"], debug=True)
