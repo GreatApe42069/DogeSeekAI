@@ -1,0 +1,15 @@
+{
+    "port": 8080,
+    "context_window": 10,
+    "ipfs_node": "/ip4/127.0.0.1/tcp/5001",
+    "federated_server": "localhost:8080",
+    "doge_address": "",
+    "doge_rpc": "",
+    "parent_doginal_id": "",
+    "external_apis": {
+        "generic_llm": {
+            "api_key": "",
+            "endpoint": ""
+        }
+    }
+}
