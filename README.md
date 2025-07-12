@@ -24,7 +24,22 @@ DogeSeekAI is a Decentralized, End-to-End Encrypted, Open-source, Multimodal AI!
 - **Automation**: GitHub Actions for dataset preprocessing, model uploads, testing, and dependency updates.
 
 ## 🛠️ Installation
-1. Install Python 3.8+.
+1. **Install Python 3.8+**:
+   - **Ubuntu/Debian**:
+     ```bash
+     sudo apt update && sudo apt install python3.8 python3.8-venv python3.8-dev
+     ```
+   - **macOS** (using Homebrew):
+     ```bash
+     brew install python@3.8
+     ```
+   - **Windows**:
+     - Using Chocolatey (recommended):
+       ```bash
+       choco install python38
+       ```
+       Install Chocolatey first: https://chocolatey.org/install
+     - Or download and run the installer from: https://www.python.org/downloads/release/python-3810/ (check "Add Python to PATH" during installation).
 2. Clone the repo:
    ```bash
    git clone https://github.com/GreatApe42069/DogeSeekAI.git
