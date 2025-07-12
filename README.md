@@ -40,21 +40,22 @@ DogeSeekAI is a Decentralized, End-to-End Encrypted, Open-source, Multimodal AI!
        ```
        Install Chocolatey first: https://chocolatey.org/install
      - Or download and run the installer from: https://www.python.org/downloads/release/python-3810/ (check "Add Python to PATH" during installation).
-2. Clone the repo:
-   ```bash
+***2. Clone the repo:***
+```bash
    git clone https://github.com/GreatApe42069/DogeSeekAI.git
    cd DogeSeekAI
+```
 
 ### Install dependencies:
 ```bash
 pip install -r requirements.txt
 ```
-### Run IPFS daemon:bash
+### Run IPFS daemon:
 ```bash
 ipfs daemon
 ```
 ### (Optional) Configure Dogecoin node and external APIs in `config.json`
-Run the app:
+#### Run the app:
 ```bash
 python DogeSeekAIMain.py
 ```
