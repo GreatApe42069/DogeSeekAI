@@ -1,0 +1,16 @@
+fastapi
+uvicorn
+transformers
+datasets
+ipfshttpclient
+cryptography
+flower
+torch
+torchvision
+librosa
+pyttsx3
+numpy
+pillow
+requests
+pytest
+doginals_js
