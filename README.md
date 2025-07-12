@@ -8,7 +8,7 @@
 
 # 🚀 DogeSeekAI
 
-DogeSeekAI is a Decentralized, End-to-End Encrypted, Open-source,mMultimodal AI, designed for local deployment, ensuring Such Privacy and Much Efficiency! Supports  text, voice, and images. It learns in real-time from user interactions, continuously improving itself while keeping all user data securely stored on your device. 
+DogeSeekAI is a Decentralized, End-to-End Encrypted, Open-source, Multimodal AI! Designed for local deployment, ensuring Such Privacy and Much Efficiency! Supports  text, voice, and images. It learns in real-time from user interactions, continuously improving itself while keeping all user data securely stored on your device. 
 
 
 *Note this model is currently still in developement and testing stages* 
