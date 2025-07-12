@@ -1,0 +1,98 @@
+name: DogeSeekAI Automation
+
+on:
+  schedule:
+    - cron: '0 0 * * *'  # Runs daily at 00:00 UTC
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  automate:
+    runs-on: ubuntu-latest
+    steps:
+      # Checkout repository
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Set up Python
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.8'
+
+      # Install dependencies
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # Update dependencies
+      - name: Update dependencies
+        run: |
+          pip install pipdeptree
+          pipdeptree --freeze > requirements.txt
+          git add requirements.txt
+          git commit -m "Update dependencies" || exit 0
+
+      # Preprocess dataset
+      - name: Preprocess dataset
+        run: python data/preprocess.py
+
+      # Upload model weights to IPFS
+      - name: Upload model weights
+        run: |
+          python -c "
+          import ipfshttpclient
+          import json
+          client = ipfshttpclient.connect('/ip4/127.0.0.1/tcp/5001')
+          ipfs_hash = client.add('models/distilbert.pt')['Hash']
+          with open('data/cids.json', 'a') as f:
+              json.dump({'model_distilbert_ipfs': ipfs_hash}, f)
+              f.write('\n')
+          "
+
+      # Run tests
+      - name: Run tests
+        run: pytest tests/test_api.py
+
+      # Lint documentation
+      - name: Lint README
+        uses: docker://avtodev/markdown-lint:v1
+        with:
+          args: 'docs/README.md'
+
+      # Commit and push changes
+      - name: Commit and push changes
+        run: |
+          git config user.name "Automated"
+          git config user.email "actions@users.noreply.github.com"
+          git add data/cids.json requirements.txt
+          timestamp=$(date -u)
+          git commit -m "Automation: dataset, model, dependencies - ${timestamp}" || exit 0
+          git push
+
+      # Optional Doginal inscription (requires secrets)
+      - name: Inscribe metadata to Dogecoin
+        if: ${{ secrets.DOGE_ADDRESS && secrets.DOGE_RPC }}
+        run: |
+          python -c "
+          from doginals.inscribe import DoginalInscriber
+          import json
+          with open('config.json', 'r') as f:
+              config = json.load(f)
+          config['doge_address'] = '${{ secrets.DOGE_ADDRESS }}'
+          config['doge_rpc'] = '${{ secrets.DOGE_RPC }}'
+          with open('config.json', 'w') as f:
+              json.dump(config, f)
+          doge_client = DoginalInscriber('${{ secrets.DOGE_ADDRESS }}', '${{ secrets.DOGE_RPC }}')
+          with open('data/cids.json', 'r') as f:
+              data = json.load(f)
+          txid = doge_client.inscribe(json.dumps(data).encode(), config['parent_doginal_id'])
+          with open('data/cids.json', 'a') as f:
+              json.dump({'doginal_txid': txid}, f)
+              f.write('\n')
+          "
