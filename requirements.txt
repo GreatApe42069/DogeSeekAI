@@ -13,4 +13,4 @@ numpy
 pillow
 requests
 pytest
-doginals_js
+

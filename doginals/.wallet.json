@@ -1,0 +1,5 @@
+{
+  "privkey": "<your private key goes here>",
+  "address": "<your Doge Address goes here>",
+  "utxos": []
+}
