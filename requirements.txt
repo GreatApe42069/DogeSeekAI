@@ -1,16 +1,16 @@
 fastapi
 uvicorn
-transformers
+# Install CPU versions from: https://download.pytorch.org/whl/cpu
+torch==2.4.1+cpu
+torchvision==0.19.1+cpu
+transformers==4.46.3
 datasets
 ipfshttpclient
 cryptography
 flower
-torch
-torchvision
 librosa
 pyttsx3
 numpy
 pillow
 requests
 pytest
-
