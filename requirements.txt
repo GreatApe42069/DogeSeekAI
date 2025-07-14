@@ -5,7 +5,7 @@ torch==2.4.1+cpu
 torchvision==0.19.1+cpu
 transformers==4.46.3
 datasets
-ipfshttpclient
+ipfshttpclient==0.7.0  # Or 0.8.0a2 if you used the alternative
 cryptography
 flower
 librosa
@@ -13,4 +13,7 @@ pyttsx3
 numpy
 pillow
 requests
+python-dotenv
+pydub
 pytest
+huggingface_hub[hf_xet]  # Optional for faster Hugging Face downloads

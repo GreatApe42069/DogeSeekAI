@@ -1,6 +1,9 @@
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+print("sys.path:", sys.path)  # Debug line
 import requests
 import json
-import os
 from doginals.inscribe import DoginalInscriber
 import subprocess
 
