@@ -1,60 +1,80 @@
-import json
-import torch
-import librosa
-import numpy as np
-import pyttsx3
-import requests
-from fastapi import FastAPI, File, UploadFile, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from transformers import DistilBertForQuestionAnswering, DistilBertTokenizer, Wav2Vec2ForCTC, Wav2Vec2Processor
-from PIL import Image
-import torchvision.transforms as transforms
-import torchvision.models as models
-import ipfshttpclient
-from cryptography.fernet import Fernet
-import flower as flwr
-import os
-from doginals.inscribe import DoginalInscriber
+import traceback
+try:
+    print("Starting WoW Much Imports...")
+    import json
+    import torch
+    import librosa
+    import numpy as np
+    import pyttsx3
+    import requests
+    from fastapi import FastAPI, File, UploadFile, HTTPException
+    from fastapi.middleware.cors import CORSMiddleware
+    from transformers import DistilBertForQuestionAnswering, DistilBertTokenizer, Wav2Vec2ForCTC, Wav2Vec2Processor
+    from PIL import Image
+    import torchvision.transforms as transforms
+    import torchvision.models as models
+    import ipfshttpclient
+    from cryptography.fernet import Fernet
+    import flower as flwr
+    import os
+    from doginals.inscribe import DoginalInscriber
+    print("Such Imports Very Complete")
 
-# Load configuration
-with open("config.json", "r") as config_file:
-    config = json.load(config_file)
+    # Load configuration
+    with open("config.json", "r") as config_file:
+        config = json.load(config_file)
 
-app = FastAPI(title="DogeSeekAI API", description="DogeSeekAI Decentralized Multimodal AI with text, voice, and image processing & Doginals Support!")
+    app = FastAPI(title="DogeSeekAI API", description="DogeSeekAI Decentralized Multimodal AI with text, voice, and image processing & Doginals Support!")
 
-# Enable CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+    # Enable CORS
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
-# Load models
-text_tokenizer = DistilBertTokenizer.from_pretrained("distilbert-base-uncased")
-text_model = DistilBertForQuestionAnswering.from_pretrained("distilbert-base-uncased")
-speech_processor = Wav2Vec2Processor.from_pretrained("facebook/wav2vec2-base-960h")
-speech_model = Wav2Vec2ForCTC.from_pretrained("facebook/wav2vec2-base-960h")
-resnet_model = models.resnet50(pretrained=True)
-resnet_model.eval()
-tts_engine = pyttsx3.init()
+    # Load models
+    print("Loading models, much wow...")
+    text_tokenizer = DistilBertTokenizer.from_pretrained("distilbert-base-uncased")
+    text_model = DistilBertForQuestionAnswering.from_pretrained("distilbert-base-uncased")
+    speech_processor = Wav2Vec2Processor.from_pretrained("facebook/wav2vec2-base-960h")
+    speech_model = Wav2Vec2ForCTC.from_pretrained("facebook/wav2vec2-base-960h")
+    resnet_model = models.resnet50(pretrained=True)
+    resnet_model.eval()
+    tts_engine = pyttsx3.init()
+    print("Models loaded, such AI!")
 
-# IPFS client
-ipfs_client = ipfshttpclient.connect(config["ipfs_node"])
+    print("Much Connecting to IPFS So WoW...")
+    # IPFS client
+    ipfs_client = ipfshttpclient.connect(config["ipfs_node"])
 
-# Optional Dogecoin client
-doge_client = None
-if config.get("doge_address") and config.get("doge_rpc"):
-    doge_client = DoginalInscriber(config["doge_address"], config["doge_rpc"])
+    # Dogecoin client
+    doge_client = None
+    wallet_path = "doginals/.wallet.json"
+    doge_address = config.get("doge_address", "")
+    private_key = ""
+    if os.path.exists(wallet_path):
+        with open(wallet_path, "r") as wallet_file:
+            wallet_data = json.load(wallet_file)
+            doge_address = wallet_data.get("address", "")
+            private_key = wallet_data.get("private_key", "")
+    if doge_address and config.get("doge_rpc"):
+        doge_client = DoginalInscriber(doge_address, config["doge_rpc"], private_key=private_key)
 
-# Encryption
-key = Fernet.generate_key()
-cipher = Fernet(key)
+    # Encryption
+    key = Fernet.generate_key()
+    cipher = Fernet(key)
 
-# Conversation history
-conversation_history = []
+    # Conversation history
+    conversation_history = []
 
+except Exception as e:
+    print(f"Error in DogeSeekAIMain.py: {e}")
+    traceback.print_exc()
+
+# FastAPI endpoints (e.g., /api/predict) go here
 @app.post("/api/predict", summary="Text-based Q&A")
 async def predict(question: str, context: str = ""):
     global conversation_history
@@ -83,6 +103,7 @@ async def predict(question: str, context: str = ""):
     tts_engine.runAndWait()
     
     return {"answer": answer}
+
 
 @app.post("/api/voice", summary="Speech-to-text and emotion analysis")
 async def voice(file: UploadFile = File(...)):

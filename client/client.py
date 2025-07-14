@@ -11,10 +11,22 @@ class DogeSeekAIClient:
     def __init__(self):
         self.yellow = "\033[38;2;255;193;7m"
         self.reset = "\033[0m"
-        self.base_url = "http://localhost:8000"
-        self.inscriber = DoginalInscriber("D9UcJkdirVLY11UtF77WnC8peg6xRYsogu", "http://127.0.0.1:22555")
         self.doginals_dir = "C:/Users/Ol Soles/OneDrive/Desktop/DogeSeekAI/doginals"
         self.config_path = "C:/Users/Ol Soles/OneDrive/Desktop/DogeSeekAI/config.json"
+        # Load config
+        with open(self.config_path, "r") as config_file:
+            config = json.load(config_file)
+        self.base_url = f"http://localhost:{config['port']}"
+        # Load wallet data
+        wallet_path = os.path.join(self.doginals_dir, ".wallet.json")
+        doge_address = ""
+        private_key = ""
+        if os.path.exists(wallet_path):
+            with open(wallet_path, "r") as wallet_file:
+                wallet_data = json.load(wallet_file)
+                doge_address = wallet_data.get("address", "")
+                private_key = wallet_data.get("private_key", "")
+        self.inscriber = DoginalInscriber(doge_address, config["doge_rpc"], private_key=private_key)s
 
     def run(self):
         print(f"""
@@ -263,7 +275,7 @@ ORD=https://wonky-ord-v2.dogeord.io/
                     except Exception as e:
                         print(f"{self.yellow}DRC-20 deploy failed: {str(e)}{self.reset}")
                 elif token_type == "mint":
-                    ticker = input(f"{self.yellow}Enter token ticker (e.g., DOGECAC): {self.reset}")
+                    ticker = input(f"{self.yellow}Enter token ticker (e.g., DOGE): {self.reset}")
                     amount = input(f"{self.yellow}Enter amount to mint (e.g., 10000000): {self.reset}")
                     try:
                         tx_output = self.inscriber.mint_drc20(ticker, amount)
