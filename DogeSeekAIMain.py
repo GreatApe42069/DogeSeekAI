@@ -20,7 +20,7 @@ from doginals.inscribe import DoginalInscriber
 with open("config.json", "r") as config_file:
     config = json.load(config_file)
 
-app = FastAPI(title="DogeSeekAI API", description="Decentralized multimodal AI with text, voice, and image processing.")
+app = FastAPI(title="DogeSeekAI API", description="DogeSeekAI Decentralized Multimodal AI with text, voice, and image processing & Doginals Support!")
 
 # Enable CORS
 app.add_middleware(
