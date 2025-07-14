@@ -5,7 +5,7 @@ class DoginalInscriber:
         self.wallet_address = wallet_address
         self.rpc_url = rpc_url
         self.node_path = "node"
-        self.script_path = "doginals.js"
+        self.script_path = "doginals/doginals.js"  # Adjust to "doginals/doginals.js" if in subfolder
 
     def inscribe(self, data, content_type="text/plain;charset=utf-8"):
         if isinstance(data, bytes):
