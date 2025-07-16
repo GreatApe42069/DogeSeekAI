@@ -2,7 +2,7 @@
     "port": 8080,
     "context_window": 10,
     "ipfs_node": "/ip4/127.0.0.1/tcp/5001",
-    "federated_server": "localhost:8080",
+    "federated_server": "localhost:8083",
     "doge_address": "",
     "doge_rpc": "http://127.0.0.1:22555",
     "parent_doginal_id": "",

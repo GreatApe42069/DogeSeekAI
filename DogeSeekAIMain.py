@@ -67,6 +67,10 @@ try:
             private_key = wallet_data.get("private_key", "")
     if doge_address and config.get("doge_rpc"):
         doge_client = DoginalInscriber(doge_address, config["doge_rpc"], private_key=private_key)
+    
+    @app.get("/test")
+    async def test():
+        return {"message": "Server is running"}
 
     # Encryption
     key = Fernet.generate_key()
@@ -169,6 +173,6 @@ except Exception as e:
 # Only run the server if app is defined
 if app is not None and __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=config["port"])
+    uvicorn.run(app, host="0.0.0.0", port=config["port"], log_level="debug")
 else:
     print("Initialization failed, server not started.")
