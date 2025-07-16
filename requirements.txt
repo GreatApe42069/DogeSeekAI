@@ -17,3 +17,4 @@ python-dotenv
 pydub
 pytest
 huggingface_hub[hf_xet]  # Optional for faster Hugging Face downloads
+python-multipart

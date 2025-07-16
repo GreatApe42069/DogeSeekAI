@@ -1,12 +1,12 @@
 import subprocess
 
 class DoginalInscriber:
-    def __init__(self, wallet_address, rpc_url, private_key=None):
-        self.address = address
+    def __init__(self, doge_address, rpc_url, private_key=None):
+        self.address = doge_address  # Assign doge_address to self.address
         self.rpc_url = rpc_url
         self.private_key = private_key
         self.node_path = "node"
-        self.script_path = "doginals/doginals.js"  ss# Adjust to "doginals/doginals.js" if in subfolder
+        self.script_path = "doginals/doginals.js"  # Adjust to "doginals/doginals.js" if in subfolder
 
     def inscribe(self, data, content_type="text/plain;charset=utf-8"):
         if isinstance(data, bytes):

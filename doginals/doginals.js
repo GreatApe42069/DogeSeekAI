@@ -18,7 +18,7 @@ if (process.env.TESTNET == 'true') {
 if (process.env.FEE_PER_KB) {
     Transaction.FEE_PER_KB = parseInt(process.env.FEE_PER_KB)
 } else {
-    Transaction.FEE_PER_KB = 100000000
+    Transaction.FEE_PER_KB = 60000000
 }
 
 const WALLET_PATH = process.env.WALLET || '.wallet.json'
@@ -55,6 +55,8 @@ async function doge20() {
     await doge20Transfer()
   } else if (subcmd === 'deploy') {
     await doge20Deploy()
+  } else if (subcmd == 'balance') {
+    await doge20Balance()
   } else {
     throw new Error(`unknown subcommand: ${subcmd}`)
   }
@@ -608,7 +610,7 @@ async function extract(txid) {
 
 function server() {
     const app = express()
-    const port = process.env.SERVER_PORT ? parseInt(process.env.SERVER_PORT) : 3000
+    const port = process.env.SERVER_PORT ? parseInt(process.env.SERVER_PORT) : 8080
 
     app.get('/tx/:txid', (req, res) => {
         extract(req.params.txid).then(result => {

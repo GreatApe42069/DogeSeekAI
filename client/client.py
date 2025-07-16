@@ -26,7 +26,7 @@ class DogeSeekAIClient:
                 wallet_data = json.load(wallet_file)
                 doge_address = wallet_data.get("address", "")
                 private_key = wallet_data.get("private_key", "")
-        self.inscriber = DoginalInscriber(doge_address, config["doge_rpc"], private_key=private_key)s
+        self.inscriber = DoginalInscriber(doge_address, config["doge_rpc"], private_key=private_key)
 
     def run(self):
         print(f"""
@@ -266,7 +266,7 @@ ORD=https://wonky-ord-v2.dogeord.io/
                 print(f"{self.yellow}Token! Create or mint DRC-20 tokens!{self.reset}")
                 token_type = input(f"{self.yellow}Enter 'deploy' to create a token or 'mint' to mint tokens: {self.reset}")
                 if token_type == "deploy":
-                    ticker = input(f"{self.yellow}Enter token ticker (e.g., DOGECAC): {self.reset}")
+                    ticker = input(f"{self.yellow}Enter token ticker (e.g., DOGE): {self.reset}")
                     total = input(f"{self.yellow}Enter total supply (e.g., 100000000): {self.reset}")
                     max_mint = input(f"{self.yellow}Enter max mint per tx (e.g., 100000000): {self.reset}")
                     try:
