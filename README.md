@@ -7,7 +7,7 @@
         ╚═════╝  ╚═════╝  ╚═════╝ ╚══════╝╚═════╝ ╚══════╝╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝
                   🐶 DogeSeekAI CLI - Much Wow, Such AI! 🐶
 ```
-# 🚀DogeSeekAI: Much Wow, Such Blockchain!
+# 🐶DogeSeekAI: Much Wow, Such Blockchain!🚀
 
 Welcome to the DogeSeekAI module! A Decentralized, End-to-End Encrypted, Open-source, Multimodal AI. It learns in real-time from user interactions and publicly available data, continuously improving itself while using GitHub and IPFS Desktop for modal data's large file storage, or while keeping all user data securely stored on your device. This module lets you inscribe doginals in the form of files, text, images, audio, or DRC-20 tokens onto the Dogecoin blockchain for immutable, decentralized storage. Bark loud, mint proud! Below are Doge-themed instructions and examples to get your Doge on the blockchain. 🌙
 
