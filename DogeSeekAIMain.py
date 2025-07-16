@@ -13,6 +13,7 @@ try:
     from PIL import Image
     import torchvision.transforms as transforms
     import torchvision.models as models
+    from torchvision.models import ResNet50_Weights
     import ipfshttpclient
     from cryptography.fernet import Fernet
     import flower as flwr
@@ -44,7 +45,7 @@ try:
     text_model = DistilBertForQuestionAnswering.from_pretrained("distilbert-base-uncased")
     speech_processor = Wav2Vec2Processor.from_pretrained("facebook/wav2vec2-base-960h")
     speech_model = Wav2Vec2ForCTC.from_pretrained("facebook/wav2vec2-base-960h")
-    resnet_model = models.resnet50(pretrained=True)
+    resnet_model = models.resnet50(weights=ResNet50_Weights.IMAGENET1K_V1)
     resnet_model.eval()
     tts_engine = pyttsx3.init()
     print("Models loaded, such AI!")
