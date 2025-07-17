@@ -70,7 +70,7 @@ Pick an action:
                 question = input(f"{self.yellow}Enter your question: {self.reset}")
                 context = input(f"{self.yellow}Optional context (press Enter to skip): {self.reset}")
                 try:
-                    response = requests.post(f"{self.base_url}/ask", json={"question": question, "context": context})
+                    response = requests.post(f"{self.base_url}/api/predict", json={"question": question, "context": context})
                     print("Raw response:", response.text)
                     print(f"{self.yellow}DogeSeekAI says: {response.json()['answer']}{self.reset}")
                 except Exception as e:

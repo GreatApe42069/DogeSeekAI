@@ -7,7 +7,7 @@ try:
     import numpy as np
     import pyttsx3
     import requests
-    from fastapi import FastAPI, File, UploadFile, HTTPException
+    from fastapi import FastAPI, File, UploadFile, HTTPException, Body
     from fastapi.middleware.cors import CORSMiddleware
     from transformers import DistilBertForQuestionAnswering, DistilBertTokenizer, Wav2Vec2ForCTC, Wav2Vec2Processor
     from PIL import Image
@@ -16,9 +16,10 @@ try:
     from torchvision.models import ResNet50_Weights
     import ipfshttpclient
     from cryptography.fernet import Fernet
-    import flower as flwr
+    import flwr  # Updated import statement
     import os
     from doginals.inscribe import DoginalInscriber
+    from federated.federated_client import DogeSeekAIClient
     print("Such Imports Very Complete LFG!!!")
 
     # Load configuration
@@ -81,7 +82,7 @@ try:
 
     # FastAPI endpoints
     @app.post("/api/predict", summary="Text-based Q&A")
-    async def predict(question: str, context: str = ""):
+    async def predict(question: str = Body(...), context: str = Body(default="")):
         global conversation_history
         if config["external_apis"]["generic_llm"]["api_key"] and config["external_apis"]["generic_llm"]["endpoint"]:
             try:
@@ -94,18 +95,35 @@ try:
             except Exception as e:
                 answer = f"External API error: {str(e)}"
         else:
-            inputs = text_tokenizer(question, context, return_tensors="pt", truncation=True, max_length=512)
-            outputs = text_model(**inputs)
+            inputs = text_tokenizer(
+                question,
+                context,
+                return_tensors="pt",
+                truncation=True,
+                max_length=512,
+                padding=True
+            )
+            with torch.no_grad():
+                outputs = text_model(**inputs)
             answer_start = torch.argmax(outputs.start_logits)
             answer_end = torch.argmax(outputs.end_logits) + 1
-            answer = text_tokenizer.decode(inputs["input_ids"][0][answer_start:answer_end])
+            if answer_start <= answer_end <= inputs["input_ids"].shape[1]:
+                answer = text_tokenizer.decode(
+                    inputs["input_ids"][0][answer_start:answer_end],
+                    skip_special_tokens=True
+                )
+            else:
+                answer = context if context else "Unable to extract answer"
         
         conversation_history.append({"question": question, "answer": answer})
         if len(conversation_history) > config["context_window"]:
             conversation_history.pop(0)
         
-        tts_engine.say(answer)
-        tts_engine.runAndWait()
+        try:
+            tts_engine.say(answer)
+            tts_engine.runAndWait()
+        except AttributeError:
+            print("TTS engine failed, skipping speech.")
         
         return {"answer": answer}
 
@@ -162,9 +180,12 @@ try:
 
     @app.post("/api/train_federated", summary="Start federated training")
     async def train_federated():
-        client = DogeSeekAIClient(text_model, text_tokenizer)
-        flwr.client.start_numpy_client(server_address=config["federated_server"], client=client)
-        return {"status": "Federated training started"}
+        try:
+            client = DogeSeekAIClient(text_model, text_tokenizer)
+            flwr.client.start_numpy_client(server_address=config["federated_server"], client=client)
+            return {"status": "Federated training started"}
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Federated training failed: {str(e)}")
 
 except Exception as e:
     print(f"Error in DogeSeekAIMain.py: {e}")
@@ -173,6 +194,12 @@ except Exception as e:
 # Only run the server if app is defined
 if app is not None and __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=config["port"], log_level="debug")
+    try:
+        uvicorn.run(app, host="0.0.0.0", port=config["port"], log_level="debug")
+    finally:
+        try:
+            tts_engine.stop()  # Explicitly stop pyttsx3 engine
+        except NameError:
+            print("TTS engine not initialized, skipping stop.")
 else:
     print("Initialization failed, server not started.")

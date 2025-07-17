@@ -11,5 +11,8 @@
             "api_key": "",
             "endpoint": ""
         }
+    },
+    "storage": {
+        "use_doginals": false
     }
 }
