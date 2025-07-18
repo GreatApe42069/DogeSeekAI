@@ -1,6 +1,6 @@
-import flwr  # Updated import statement
+import flwr
 import torch
-from transformers import DistilBertForQuestionAnswering, DistilBertTokenizer, Trainer, TrainingArguments
+from transformers import DistilBertForQuestionAnswering, DistilBertTokenizerFast, Trainer, TrainingArguments
 from datasets import load_dataset
 
 class DogeSeekAIClient(flwr.client.NumPyClient):
@@ -22,7 +22,8 @@ class DogeSeekAIClient(flwr.client.NumPyClient):
                 max_length=512,
                 truncation=True,
                 padding="max_length",
-                return_tensors="pt"
+                return_tensors="pt",
+                return_offsets_mapping=True
             )
             start_positions = []
             end_positions = []
@@ -30,7 +31,7 @@ class DogeSeekAIClient(flwr.client.NumPyClient):
                 start_char = answer["answer_start"][0]
                 end_char = start_char + len(answer["text"][0])
                 tokens = inputs["input_ids"][i]
-                offsets = self.tokenizer(questions[i], contexts[i], return_offsets_mapping=True)["offset_mapping"]
+                offsets = inputs["offset_mapping"][i]
                 start_token = None
                 end_token = None
                 for idx, (start, end) in enumerate(offsets):
@@ -46,12 +47,13 @@ class DogeSeekAIClient(flwr.client.NumPyClient):
                 end_positions.append(end_token)
             inputs["start_positions"] = start_positions
             inputs["end_positions"] = end_positions
+            del inputs["offset_mapping"]  # Remove offset_mapping to avoid serialization issues
             return inputs
 
         return dataset.map(preprocess_function, batched=True, remove_columns=["id", "title", "context", "question", "answers"])
 
     def get_parameters(self, config):
-        return [val.cpu().numpy() for val in self.model.parameters()]
+        return [val.detach().cpu().numpy() for val in self.model.parameters()]
 
     def set_parameters(self, parameters, config):
         for param, val in zip(self.model.parameters(), parameters):

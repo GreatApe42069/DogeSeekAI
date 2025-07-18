@@ -6,7 +6,7 @@ torchvision==0.19.1+cpu
 transformers==4.46.3
 datasets
 ipfshttpclient==0.8.0a2
-cryptography
+cryptography==42.0.8
 flwr==1.10.0
 librosa
 pyttsx3
