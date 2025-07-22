@@ -1,12 +1,12 @@
 fastapi
 uvicorn
 # Install CPU versions from: https://download.pytorch.org/whl/cpu
-torch==2.4.1+cpu
+torch==2.7.1
 torchvision==0.19.1+cpu
-transformers==4.46.3
+transformers==4.52.1
 datasets
 ipfshttpclient==0.8.0a2
-cryptography==42.0.8
+cryptography==44.0.1
 flwr==1.10.0
 librosa
 pyttsx3
